@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>HTML 이미지 포함기</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2em;
+      background: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 2em;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input[type="file"] {
+      display: block;
+      margin-bottom: 1em;
+    }
+    button {
+      padding: 0.7em 1.5em;
+      font-size: 1em;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    #status {
+      margin-top: 1em;
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>HTML + 이미지 ZIP 변환기</h2>
+    <p>HTML 파일과 이미지들이 들어있는 ZIP 파일을 업로드하세요.</p>
+    <input type="file" id="zipInput" accept=".zip">
+    <button onclick="processZip()">변환 시작</button>
+    <div id="status"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script>
+    async function processZip() {
+      const input = document.getElementById('zipInput');
+      const status = document.getElementById('status');
+      if (!input.files.length) return alert("ZIP 파일을 선택하세요.");
+
+      const file = input.files[0];
+      const zip = await JSZip.loadAsync(file);
+      let htmlFile = null;
+      let images = {};
+
+      status.textContent = "ZIP 파일을 분석 중입니다...";
+
+      // 파일 분리
+      await Promise.all(Object.keys(zip.files).map(async name => {
+        const ext = name.split('.').pop().toLowerCase();
+        if (ext === 'html') {
+          htmlFile = await zip.files[name].async("string");
+        } else if (["png","jpg","jpeg","gif","webp","svg"].includes(ext)) {
+          const data = await zip.files[name].async("base64");
+          const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+          images[name.split('/').pop()] = `data:${mime};base64,${data}`;
+        }
+      }));
+
+      if (!htmlFile) return status.textContent = "HTML 파일을 찾을 수 없습니다.";
+
+      // HTML 수정
+      status.textContent = "이미지를 포함 중입니다...";
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlFile, "text/html");
+      doc.querySelectorAll("img").forEach(img => {
+        const name = img.getAttribute("src")?.split('/').pop();
+        if (images[name]) {
+          img.setAttribute("src", images[name]);
+        }
+      });
+
+      // HTML 다운로드
+      const final = '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+      const blob = new Blob([final], { type: 'text/html' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'embedded.html';
+      link.click();
+
+      status.textContent = "✅ 변환 완료! embedded.html 파일이 다운로드되었습니다.";
+    }
+  </script>
+</body>
+</html>
