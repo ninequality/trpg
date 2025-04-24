@@ -1,0 +1,42 @@
+import React, { useState } from "react"; import { Textarea } from "@/components/ui/textarea"; import { Button } from "@/components/ui/button";
+
+export default function Base64ImageReplacer() { const [html, setHtml] = useState(""); const [output, setOutput] = useState(""); const [imageData, setImageData] = useState(null);
+
+const handleImageUpload = (e) => { const file = e.target.files[0]; const reader = new FileReader();
+
+reader.onloadend = () => {
+  setImageData(reader.result);
+};
+
+if (file) {
+  reader.readAsDataURL(file);
+}
+
+};
+
+const replaceImageSrc = () => { if (!imageData) return alert("이미지를 먼저 업로드하세요."); const updatedHtml = html.replace(/<img\s+[^>]src=["'][^"']["'][^>]>/i, (match) => { return match.replace(/src=["'][^"']["']/, src=\"${imageData}\"); }); setOutput(updatedHtml); };
+
+return ( <div className="p-4 max-w-3xl mx-auto space-y-4"> <h1 className="text-2xl font-bold">Base64 이미지 변환기</h1>
+
+<div>
+    <label className="font-semibold">1. 이미지 업로드</label>
+    <input type="file" accept="image/*" onChange={handleImageUpload} className="mt-2" />
+  </div>
+
+  <div>
+    <label className="font-semibold">2. 기존 HTML 붙여넣기</label>
+    <Textarea value={html} onChange={(e) => setHtml(e.target.value)} rows={8} placeholder="<img src='example.jpg'>" />
+  </div>
+
+  <Button onClick={replaceImageSrc}>Base64로 이미지 변경</Button>
+
+  {output && (
+    <div>
+      <label className="font-semibold">3. 변환된 HTML 코드</label>
+      <Textarea value={output} readOnly rows={8} className="bg-gray-100 mt-2" />
+    </div>
+  )}
+</div>
+
+); }
+
